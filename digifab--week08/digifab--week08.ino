@@ -7,13 +7,12 @@ int powPin = NEOPIXEL_POWER;
 int neoPin = PIN_NEOPIXEL;
 int boardLed = PIN_LED_G;
 int ledCount = 2;
-int cyclePhase1 = 7;
-int cyclePhase2 = 14;
-int cyclePhase3 = 7;
+int cyclePhase[3] = {7, 14, 7};
 int ledPins[2] = {D0, D7}; // surface mount LEDs (D6 is not connected to the ground)
 bool ledState = LOW; // HIGH, true, and 1 mean the same
 bool btnState = HIGH; // button is high as it is connected to 3.3V via a pull-up resistor
 bool inCycle = LOW;
+bool isWaiting = HIGH;
 
 Adafruit_NeoPixel pixels(NUM_PIXELS, neoPin, NEO_GRB + NEO_KHZ800);
 
@@ -58,19 +57,21 @@ void loop() {
 
   bool btnReading = digitalRead(BTN);
 
-  // defaultState(inCycle);
+  if (isWaiting){
+    waiting();
+  }
 
   // Check if the button state has changed
   if (btnReading != btnState) {
     if (btnReading == LOW) { // LOW means button is pressed
       Serial.println("Button pressed >>>");
+      isWaiting = LOW;
       btnState = LOW;
       inCycle = HIGH;
-
-      cycle();
-
     }
     delay(50); // debounce
+    cycle();
+    isWaiting = HIGH;
   } else {
       // Button released
       btnState = HIGH;
@@ -78,38 +79,61 @@ void loop() {
 
 }
 
-// void defaultState(bool inCycle){
-//   if (!inCycle) {
-//     boardLed = PIN_LED_G;
-//     digitalWrite(boardLed, HIGH);
-//     delay(20);
-//     digitalWrite(boardLed, LOW);
-//     delay(20);  
-//   }   
-// }
+void waiting(){
+  int r = random(0,255);
+  int g = random(0,255);
+  int b = random(0,255);
+  if (!inCycle && btnState==HIGH) {
+    for (int i=0; i<50; i++){
+      pixels.clear();
+      pixels.setPixelColor(0, pixels.Color(r, g, b));
+      pixels.setBrightness(i);
+      pixels.show();
+      delay(10);
+    }
+    for (int i=50; i>0; i--){
+      pixels.clear();
+      pixels.setPixelColor(0, pixels.Color(r, g, b));
+      pixels.setBrightness(i);
+      pixels.show();
+      delay(10);
+    }
+  }
+}
 
 void cycle(){
   Serial.println("Entering your cycle >>>");
   boardLed = PIN_LED_R;
+
+  int dayCount = 0;
   
-  for (int i=0; i<cyclePhase1; i++){
+  for (int i=0; i<cyclePhase[1]; i++){
+    dayCount++;
+    Serial.print("Day count: ");
+    Serial.println(dayCount);
+
     digitalWrite(boardLed, HIGH);
     delay(500);
     digitalWrite(boardLed, LOW);
-    delay(500);  
+    delay(300);  
   }
 
   ovulation();
 
-  for (int i=0; i<cyclePhase2; i++){
+  for (int i=0; i<cyclePhase[2]; i++){
+    dayCount++;
+    Serial.print("Day count: ");
+    Serial.println(dayCount);
+
     digitalWrite(boardLed, HIGH);
     delay(500);
     digitalWrite(boardLed, LOW);
-    delay(500);  
+    delay(300);  
   }
 
   bleed();
-
+  Serial.println("End of cycle >>>");
+  inCycle = LOW;
 }
 
 void ovulation(){
@@ -128,12 +152,22 @@ void ovulation(){
 }
 
 void bleed(){
+  Serial.println("Bleeding >>>");
   int r = random(0, 100);
   int g = 0;
   int b = 0;
-  pixels.clear();
-  pixels.setPixelColor(0, pixels.Color(r, g, b));
-  pixels.setBrightness(50);
-  pixels.show();
-  delay(1000);
+  for (int i=0; i<100; i++){
+    pixels.clear();
+    pixels.setPixelColor(0, pixels.Color(r, g, b));
+    pixels.setBrightness(i);
+    pixels.show();
+    delay(10);
+  }
+  for (int i=100; i>0; i--){
+    pixels.clear();
+    pixels.setPixelColor(0, pixels.Color(r, g, b));
+    pixels.setBrightness(i);
+    pixels.show();
+    delay(10);
+  }
 }
